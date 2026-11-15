@@ -1,0 +1,39 @@
+# Secrets
+.env
+.env.*
+!.env.example
+
+# Python
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Runtime data: uploaded PDFs, ChromaDB database, registry and counters
+server/data/
+*.sqlite3
+chroma/
+
+# Node
+node_modules/
+client/dist/
+.vite/
+npm-debug.log*
+
+# Logs, OS and editor files
+*.log
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Private documents: never commit your own PDFs. Only the bundled sample is allowed.
+*.pdf
+!sample_data/evidenceai_sample_paper.pdf
+
+# Generated security audit reports
+client/audit-report.json

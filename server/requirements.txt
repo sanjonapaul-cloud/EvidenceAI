@@ -1,0 +1,24 @@
+# EvidenceAI backend dependencies.
+# Recommended: Python 3.10, 3.11 or 3.12 (some ML packages lag behind the newest Python releases).
+#
+# NOTE: these exact versions were chosen from published release information but the full set
+# could NOT be install-tested in the sandbox where this project was generated (no network for
+# pip). If `pip install -r requirements.txt` reports a conflict, see docs/setup_guide.md.
+
+fastapi==0.130.0
+uvicorn[standard]==0.54.0
+python-multipart==0.0.32
+pydantic==2.13.5
+python-dotenv==1.2.3
+
+# PDF text extraction
+PyMuPDF==1.26.5
+
+# Embeddings (downloads PyTorch; large install, several hundred MB)
+sentence-transformers==5.1.1
+
+# Vector database
+chromadb==1.5.6
+
+# Google Gen AI SDK for Gemini
+google-genai==1.47.0

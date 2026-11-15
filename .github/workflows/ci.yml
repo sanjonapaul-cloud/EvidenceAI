@@ -1,0 +1,38 @@
+# Continuous integration (Member 6).
+# NOTE: this workflow was written but has NOT been run (the project was generated outside GitHub).
+# Expect to adjust it on the first run. The heavy ML packages make the backend install slow; if CI
+# is too slow, install only the lightweight packages and rely on the tests that skip heavy imports.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+      - run: pip install -r requirements-dev.txt
+      - run: python -m pytest -v
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: client
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+      - run: npm install
+      - run: npm run build
