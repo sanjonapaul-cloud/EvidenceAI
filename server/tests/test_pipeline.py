@@ -128,3 +128,20 @@ def test_metrics_count_each_outcome(loaded, registry, embedder, store, metrics):
     assert summary["retrieval_only_responses"] == 1
     assert summary["llm_error_responses"] == 1
     assert summary["evaluation_status"] == "Usage counts only"
+
+def test_fake_llm_supports_sequential_responses():
+    llm = FakeLLM(reply=[
+        "Generated answer.",
+        '{"status": "supported", "explanation": "Evidence supports it."}'
+    ])
+
+    first = llm.generate("answer-system", "answer-prompt")
+    second = llm.generate("verification-system", "verification-prompt")
+
+    assert first == "Generated answer."
+    assert second == (
+        '{"status": "supported", "explanation": "Evidence supports it."}'
+    )
+    assert llm.calls == 2
+    assert len(llm.prompts) == 2
+    assert llm.prompts[1][0] == "verification-system"

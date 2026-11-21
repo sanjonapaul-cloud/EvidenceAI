@@ -67,23 +67,41 @@ class InMemoryVectorStore:
 
 
 class FakeLLM:
-    """Returns a scripted reply and counts calls."""
-
     def __init__(self, reply="", configured=True, fail=False):
         self.reply = reply
+        self.responses = (
+            list(reply) if isinstance(reply, (list, tuple)) else [reply]
+        )
         self.is_configured = configured
         self.fail = fail
         self.calls = 0
         self.last_prompt = None
+        self.prompts = []
 
     def generate(self, system_instruction, prompt):
         self.calls += 1
         self.last_prompt = prompt
+        self.prompts.append((system_instruction, prompt))
+
         if self.fail:
             raise LLMError("boom")
-        return self.reply
+
+        if not self.responses:
+            return ""
+
+        response_index = min(self.calls - 1, len(self.responses) - 1)
+        return self.responses[response_index]
 
 
+# A tiny fake "PDF" content: pages of text used by fake extractors.
+SAMPLE_PAGES = {
+    1: "Cool roofs reflect sunlight and lower rooftop surface temperature in dense neighbourhoods. "
+    "The pilot study compared reflective coatings with standard dark roofing on forty buildings.",
+    2: "Sensors recorded air temperature every ten minutes during the summer measurement period. "
+    "Researchers used paired buildings to compare reflective and standard roofs fairly.",
+    3: "Limitations: the study covered a single city and only one summer, so results may not "
+    "generalise. Coating durability over several years was not measured.",
+}
 def make_settings(tmp_path, **overrides) -> Settings:
     values = dict(
         gemini_api_key="",
@@ -99,14 +117,3 @@ def make_settings(tmp_path, **overrides) -> Settings:
     )
     values.update(overrides)
     return Settings(**values)
-
-
-# A tiny fake "PDF" content: pages of text used by fake extractors.
-SAMPLE_PAGES = {
-    1: "Cool roofs reflect sunlight and lower rooftop surface temperature in dense neighbourhoods. "
-    "The pilot study compared reflective coatings with standard dark roofing on forty buildings.",
-    2: "Sensors recorded air temperature every ten minutes during the summer measurement period. "
-    "Researchers used paired buildings to compare reflective and standard roofs fairly.",
-    3: "Limitations: the study covered a single city and only one summer, so results may not "
-    "generalise. Coating durability over several years was not measured.",
-}
