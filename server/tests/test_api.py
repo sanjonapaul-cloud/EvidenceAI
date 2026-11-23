@@ -30,7 +30,10 @@ def client(tmp_path):
     registry = DocumentRegistry(settings.registry_path)
     metrics = MetricsStore(settings.metrics_path)
     embedder, store = HashingEmbedder(), InMemoryVectorStore()
-    llm = FakeLLM("The study covered a single city [E1].")
+    llm = FakeLLM([
+    "The study covered a single city [E1].",
+    '{"status": "supported", "explanation": "The cited passage explicitly states that the study covered a single city."}'
+    ])
 
     app = create_app()
     app.dependency_overrides.update(
