@@ -87,6 +87,9 @@ class ChromaVectorStore:
                     page=int(meta["page"]),
                     text=result["documents"][0][i],
                     score=1.0 - float(result["distances"][0][i]),
+                    chunk_index=int(meta["chunk_index"]),
+                    char_start=int(meta["char_start"]),
+                    char_end=int(meta["char_end"]),
                 )
             )
         return hits

@@ -7,6 +7,13 @@ const STATUS_LABEL = {
   llm_error: { text: "AI service unavailable", cls: "badge-red" },
 };
 
+const CLAIM_STATUS = {
+  supported: { text: "Supported", cls: "badge-green" },
+  partially_supported: { text: "Partially supported", cls: "badge-amber" },
+  contradicted: { text: "Contradicted", cls: "badge-red" },
+  insufficient: { text: "Insufficient evidence", cls: "badge-blue" },
+};
+
 export default function ChatMessage({ message }) {
   if (message.role === "user") {
     return (
@@ -27,6 +34,7 @@ export default function ChatMessage({ message }) {
   const label = STATUS_LABEL[message.status];
   const insufficient = message.status === "insufficient_evidence";
   const citations = message.citations || [];
+  const claims = message.claims || [];
 
   return (
     <div className="msg">
@@ -34,6 +42,51 @@ export default function ChatMessage({ message }) {
         {label && <span className={`badge ${label.cls}`}>{label.text}</span>}
         <p className="answer-text">{message.text}</p>
         {message.note && <p className="muted small">{message.note}</p>}
+
+        {claims.length > 0 && (
+          <div className="citations">
+            <div className="citations-title">
+              Claim-level verification ({claims.length})
+            </div>
+
+            {claims.map((claim, index) => {
+              const claimStatus = CLAIM_STATUS[claim.status];
+
+              return (
+                <div className="citation" key={`${index}-${claim.claim}`}>
+                  <div className="citation-head">
+                    <strong>Claim {index + 1}</strong>
+                    {claimStatus && (
+                      <span className={`badge ${claimStatus.cls}`}>
+                        {claimStatus.text}
+                      </span>
+                    )}
+                  </div>
+
+                  <p className="answer-text">{claim.claim}</p>
+
+                  {claim.explanation && (
+                    <p className="muted small">{claim.explanation}</p>
+                  )}
+
+                  {claim.sources?.length > 0 && (
+                    <div className="citations">
+                      <div className="citations-title">
+                        Sources for this claim ({claim.sources.length})
+                      </div>
+                      {claim.sources.map((source) => (
+                        <CitationCard
+                          key={`${source.evidence_id}-${source.document_id}`}
+                          citation={source}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {citations.length > 0 && (
           <div className="citations">

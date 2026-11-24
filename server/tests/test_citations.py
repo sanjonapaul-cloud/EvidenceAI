@@ -12,8 +12,22 @@ from app.retrieval.base import RetrievedChunk
 
 def _hits():
     return [
-        RetrievedChunk("c1", "doc_001", "a.pdf", 3, "Limitations: single city, one summer. " * 5, 0.9),
-        RetrievedChunk("c2", "doc_002", "b.pdf", 8, "Methods used paired buildings.", 0.6),
+        RetrievedChunk(
+            "c1", "doc_001", "a.pdf", 3,
+            "Limitations: single city, one summer. " * 5,
+            0.9,
+            chunk_index=2,
+            char_start=600,
+            char_end=780,
+        ),
+        RetrievedChunk(
+            "c2", "doc_002", "b.pdf", 8,
+            "Methods used paired buildings.",
+            0.6,
+            chunk_index=4,
+            char_start=1200,
+            char_end=1450,
+        ),
     ]
 
 
@@ -25,8 +39,25 @@ def test_evidence_ids_are_sequential_and_keep_metadata():
 
 def test_citation_has_all_required_fields():
     citation = evidence_to_citation(build_evidence(_hits())[0])
-    assert set(citation) == {"document_id", "filename", "page", "evidence_id", "excerpt"}
-    assert citation["page"] == 3 and citation["evidence_id"] == "E1"
+
+    assert set(citation) == {
+        "document_id",
+        "filename",
+        "page",
+        "evidence_id",
+        "excerpt",
+        "chunk_id",
+        "chunk_index",
+        "char_start",
+        "char_end",
+    }
+
+    assert citation["page"] == 3
+    assert citation["evidence_id"] == "E1"
+    assert citation["chunk_id"] == "c1"
+    assert citation["chunk_index"] == 2
+    assert citation["char_start"] == 600
+    assert citation["char_end"] == 780
 
 
 def test_excerpt_is_real_source_text_and_truncated():

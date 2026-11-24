@@ -31,4 +31,5 @@ def ask(
         status=result.status,
         citations=result.citations,
         note=result.note,
+        claims=result.claims,
     )

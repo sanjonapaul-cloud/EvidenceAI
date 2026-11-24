@@ -78,6 +78,23 @@ class Citation(BaseModel):
     page: int
     evidence_id: str
     excerpt: str
+    chunk_id: str
+    chunk_index: Optional[int] = None
+    char_start: Optional[int] = None
+    char_end: Optional[int] = None
+
+
+class ClaimAssessment(BaseModel):
+    claim: str
+    evidence_ids: List[str]
+    status: Literal[
+        "supported",
+        "partially_supported",
+        "contradicted",
+        "insufficient",
+    ]
+    explanation: str
+    sources: List[Citation] = Field(default_factory=list)
 
 
 class ChatResponse(BaseModel):
@@ -85,6 +102,7 @@ class ChatResponse(BaseModel):
     status: Literal["answered", "insufficient_evidence", "retrieval_only", "llm_error"]
     citations: List[Citation]
     note: Optional[str] = None
+    claims: List[ClaimAssessment] = Field(default_factory=list)
 
 
 class EvaluationSummary(BaseModel):

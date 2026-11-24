@@ -107,7 +107,23 @@ def test_upload_list_chat_and_evaluation_flow(client, monkeypatch):
     assert ask.status_code == 200
     data = ask.json()
     assert data["status"] == "answered"
-    assert set(data["citations"][0]) == {"document_id", "filename", "page", "evidence_id", "excerpt"}
+    assert set(data["citations"][0]) == {
+        "document_id",
+        "filename",
+        "page",
+        "evidence_id",
+        "excerpt",
+        "chunk_id",
+        "chunk_index",
+        "char_start",
+        "char_end",
+    }
+
+    assert data["citations"][0]["chunk_id"]
+    assert data["citations"][0]["chunk_index"] is not None
+    assert data["citations"][0]["char_start"] is not None
+    assert data["citations"][0]["char_end"] > data["citations"][0]["char_start"]
+    assert isinstance(data["claims"], list)
 
     insufficient = client.post(
         "/api/chat/ask", json={"question": "Explain quantum chromodynamics gluons", "document_ids": ["doc_001"]}

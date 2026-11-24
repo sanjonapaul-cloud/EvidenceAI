@@ -44,7 +44,22 @@ def test_answered_response_has_correct_structure(loaded, registry, embedder, sto
     assert result.answer.startswith("The study covered")
     assert result.citations
     citation = result.citations[0]
-    assert set(citation) == {"document_id", "filename", "page", "evidence_id", "excerpt"}
+    assert set(citation) == {
+        "document_id",
+        "filename",
+        "page",
+        "evidence_id",
+        "excerpt",
+        "chunk_id",
+        "chunk_index",
+        "char_start",
+        "char_end",
+    }
+    assert citation["chunk_id"]
+    assert citation["chunk_index"] is not None
+    assert citation["char_start"] is not None
+    assert citation["char_end"] is not None
+    assert citation["char_end"] > citation["char_start"]
     assert (citation["document_id"], citation["filename"], citation["page"]) == ("doc_001", "cool_roofs.pdf", 3)
     assert citation["evidence_id"] == "E1"
     assert "single city" in citation["excerpt"]

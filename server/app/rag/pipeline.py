@@ -67,12 +67,20 @@ def _insufficient(
     )
 
 
-def _claim_to_dict(result: ClaimVerification) -> dict:
+def _claim_to_dict(
+    result: ClaimVerification,
+    evidence_by_id: dict,
+) -> dict:
     return {
         "claim": result.claim,
         "evidence_ids": result.evidence_ids,
         "status": result.status,
         "explanation": result.explanation,
+        "sources": [
+            evidence_to_citation(evidence_by_id[eid])
+            for eid in result.evidence_ids
+            if eid in evidence_by_id
+        ],
     }
 
 
@@ -154,6 +162,7 @@ def answer_question(
                 "explanation": (
                     "This claim has no valid citation to retrieved evidence."
                 ),
+                "sources": [],
             }
             assessments.append(assessment)
             continue
@@ -190,10 +199,15 @@ def answer_question(
                     "The verifier returned an invalid response. "
                     "This claim could not be verified."
                 ),
+                "sources": [
+                    evidence_to_citation(evidence_by_id[eid])
+                    for eid in claim.evidence_ids
+                    if eid in evidence_by_id
+                ],
             })
             continue
 
-        assessment = _claim_to_dict(verification)
+        assessment = _claim_to_dict(verification, evidence_by_id)
         assessments.append(assessment)
 
         if verification.status in {"supported", "partially_supported"}:

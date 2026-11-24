@@ -15,6 +15,9 @@ class RetrievedChunk:
     page: int
     text: str
     score: float  # similarity, higher = more relevant (1.0 = identical meaning)
+    chunk_index: int | None = None
+    char_start: int | None = None
+    char_end: int | None = None
 
 
 class VectorStore(Protocol):

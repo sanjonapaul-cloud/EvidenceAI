@@ -52,6 +52,7 @@ export default function ChatPage({
           status: data.status,
           citations: data.citations,
           note: data.note,
+          claims: data.claims ?? [],
         },
       ]);
     } catch (err) {

@@ -54,7 +54,17 @@ class InMemoryVectorStore:
                 continue
             score = sum(a * b for a, b in zip(embedding, emb))  # cosine (vectors are unit length)
             scored.append(
-                RetrievedChunk(chunk.chunk_id, chunk.document_id, chunk.filename, chunk.page, chunk.text, score)
+                RetrievedChunk(
+                    chunk_id=chunk.chunk_id,
+                    document_id=chunk.document_id,
+                    filename=chunk.filename,
+                    page=chunk.page,
+                    text=chunk.text,
+                    score=score,
+                    chunk_index=chunk.chunk_index,
+                    char_start=chunk.char_start,
+                    char_end=chunk.char_end,
+                )
             )
         scored.sort(key=lambda h: h.score, reverse=True)
         return scored[:top_k]
