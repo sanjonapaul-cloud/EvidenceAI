@@ -2,6 +2,7 @@ const ITEMS = [
   { id: "dashboard", label: "Dashboard", icon: "▦" },
   { id: "chat", label: "Ask Questions", icon: "✎" },
   { id: "evaluation", label: "Evaluation", icon: "◔" },
+  { id: "audit", label: "Audit Trail", icon: "◷" },
 ];
 
 export default function Sidebar({ page, onNavigate, health, healthError }) {

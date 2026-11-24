@@ -50,3 +50,16 @@ export const askQuestion = ({ question, documentIds, sessionId }) =>
 
 // GET /api/evaluation/summary
 export const getEvaluationSummary = () => request("/evaluation/summary");
+// GET /api/audit/events -> paginated audit events
+export const listAuditEvents = ({ limit = 20, offset = 0, eventType = "" } = {}) => {
+  const params = new URLSearchParams({
+    limit: String(limit),
+    offset: String(offset),
+  });
+
+  if (eventType) {
+    params.set("event_type", eventType);
+  }
+
+  return request(`/audit/events?${params.toString()}`);
+};

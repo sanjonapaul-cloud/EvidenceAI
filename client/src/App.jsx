@@ -5,6 +5,7 @@ import StatusBanner from "./components/StatusBanner.jsx";
 import DashboardPage from "./pages/DashboardPage.jsx";
 import ChatPage from "./pages/ChatPage.jsx";
 import EvaluationPage from "./pages/EvaluationPage.jsx";
+import AuditPage from "./pages/AuditPage.jsx";
 
 export default function App() {
   const [page, setPage] = useState("dashboard"); // simple navigation: no router library needed
@@ -67,6 +68,7 @@ export default function App() {
           />
         )}
         {page === "evaluation" && <EvaluationPage />}
+        {page === "audit" && <AuditPage />}
       </main>
     </div>
   );
