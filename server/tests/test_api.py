@@ -203,3 +203,182 @@ def test_chat_request_creates_persistent_audit_event(client, monkeypatch):
     assert json.loads(document_ids) == ["doc_001"]
     assert json.loads(claim_status_counts) == {"supported": 1}
     assert json.loads(evidence_ids) == ["E1"]
+
+
+def test_audit_events_endpoint_returns_empty_list(client):
+    response = client.get("/api/audit/events")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 0
+    assert body["limit"] == 20
+    assert body["offset"] == 0
+    assert body["events"] == []
+
+
+def test_audit_events_endpoint_returns_persisted_events(client):
+    audit_store = client.app.dependency_overrides[
+        deps.get_audit_store
+    ]()
+
+    audit_store.record_event(
+        event_type="answer_generated",
+        request_id="request-001",
+        document_ids=["doc-001"],
+        claim_statuses=["supported", "insufficient"],
+        evidence_ids=["E1", "E2"],
+    )
+
+    response = client.get("/api/audit/events")
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 1
+
+    event = body["events"][0]
+    assert event["request_id"] == "request-001"
+    assert event["event_type"] == "answer_generated"
+    assert event["document_ids"] == ["doc-001"]
+    assert event["claim_status_counts"] == {
+        "supported": 1,
+        "insufficient": 1,
+    }
+    assert event["evidence_ids"] == ["E1", "E2"]
+
+    assert "question" not in event
+    assert "answer" not in event
+    assert "excerpt" not in event
+
+
+def test_audit_events_endpoint_supports_filtering_and_pagination(client):
+    audit_store = client.app.dependency_overrides[
+        deps.get_audit_store
+    ]()
+
+    audit_store.record_event(event_type="answer_generated")
+    audit_store.record_event(event_type="retrieval_completed")
+    audit_store.record_event(event_type="answer_generated")
+
+    response = client.get(
+        "/api/audit/events",
+        params={
+            "event_type": "answer_generated",
+            "limit": 1,
+            "offset": 1,
+        },
+    )
+
+    assert response.status_code == 200
+    body = response.json()
+    assert body["total"] == 2
+    assert body["limit"] == 1
+    assert body["offset"] == 1
+    assert len(body["events"]) == 1
+    assert body["events"][0]["event_type"] == "answer_generated"
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"limit": 0},
+        {"limit": 101},
+        {"offset": -1},
+    ],
+)
+def test_audit_events_endpoint_rejects_invalid_parameters(
+    client, params
+):
+    response = client.get("/api/audit/events", params=params)
+
+    assert response.status_code == 422
+
+
+def test_audit_events_endpoint_returns_empty_list(client):
+    response = client.get("/api/audit/events")
+
+    assert response.status_code == 200
+
+    body = response.json()
+    assert body["total"] == 0
+    assert body["limit"] == 20
+    assert body["offset"] == 0
+    assert body["events"] == []
+
+
+def test_audit_events_endpoint_returns_persisted_events(client):
+    audit_store = client.app.dependency_overrides[
+        deps.get_audit_store
+    ]()
+
+    audit_store.record_event(
+        event_type="answer_generated",
+        request_id="request-001",
+        document_ids=["doc-001"],
+        claim_statuses=["supported", "insufficient"],
+        evidence_ids=["E1", "E2"],
+    )
+
+    response = client.get("/api/audit/events")
+
+    assert response.status_code == 200
+
+    body = response.json()
+    assert body["total"] == 1
+
+    event = body["events"][0]
+    assert event["request_id"] == "request-001"
+    assert event["event_type"] == "answer_generated"
+    assert event["document_ids"] == ["doc-001"]
+    assert event["claim_status_counts"] == {
+        "supported": 1,
+        "insufficient": 1,
+    }
+    assert event["evidence_ids"] == ["E1", "E2"]
+
+    assert "question" not in event
+    assert "answer" not in event
+    assert "excerpt" not in event
+
+
+def test_audit_events_endpoint_supports_filtering_and_pagination(client):
+    audit_store = client.app.dependency_overrides[
+        deps.get_audit_store
+    ]()
+
+    audit_store.record_event(event_type="answer_generated")
+    audit_store.record_event(event_type="retrieval_completed")
+    audit_store.record_event(event_type="answer_generated")
+
+    response = client.get(
+        "/api/audit/events",
+        params={
+            "event_type": "answer_generated",
+            "limit": 1,
+            "offset": 1,
+        },
+    )
+
+    assert response.status_code == 200
+
+    body = response.json()
+    assert body["total"] == 2
+    assert body["limit"] == 1
+    assert body["offset"] == 1
+    assert len(body["events"]) == 1
+    assert body["events"][0]["event_type"] == "answer_generated"
+
+
+@pytest.mark.parametrize(
+    "params",
+    [
+        {"limit": 0},
+        {"limit": 101},
+        {"offset": -1},
+    ],
+)
+def test_audit_events_endpoint_rejects_invalid_parameters(
+    client, params
+):
+    response = client.get("/api/audit/events", params=params)
+
+    assert response.status_code == 422

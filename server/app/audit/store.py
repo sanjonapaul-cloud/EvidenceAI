@@ -107,3 +107,77 @@ class AuditStore:
             connection.close()
 
         return event_id
+
+    def list_events(
+        self,
+        *,
+        limit: int = 20,
+        offset: int = 0,
+        event_type: str | None = None,
+    ) -> dict:
+        """Return paginated audit events and their total matching count."""
+        if limit < 1 or limit > 100:
+            raise ValueError("limit must be between 1 and 100")
+
+        if offset < 0:
+            raise ValueError("offset must not be negative")
+
+        conditions = []
+        parameters = []
+
+        if event_type:
+            conditions.append("event_type = ?")
+            parameters.append(event_type)
+
+        where_clause = (
+            f"WHERE {' AND '.join(conditions)}"
+            if conditions
+            else ""
+        )
+
+        connection = sqlite3.connect(self.db_path, timeout=10)
+        connection.row_factory = sqlite3.Row
+
+        try:
+            connection.execute("PRAGMA busy_timeout=10000")
+
+            total = connection.execute(
+                f"SELECT COUNT(*) FROM audit_events {where_clause}",
+                parameters,
+            ).fetchone()[0]
+
+            rows = connection.execute(
+                f"""
+                SELECT event_id, request_id, event_type, created_at,
+                       document_ids, claim_status_counts, evidence_ids
+                FROM audit_events
+                {where_clause}
+                ORDER BY created_at DESC, event_id DESC
+                LIMIT ? OFFSET ?
+                """,
+                [*parameters, limit, offset],
+            ).fetchall()
+
+            events = [
+                {
+                    "event_id": row["event_id"],
+                    "request_id": row["request_id"],
+                    "event_type": row["event_type"],
+                    "created_at": row["created_at"],
+                    "document_ids": json.loads(row["document_ids"]),
+                    "claim_status_counts": json.loads(
+                        row["claim_status_counts"]
+                    ),
+                    "evidence_ids": json.loads(row["evidence_ids"]),
+                }
+                for row in rows
+            ]
+
+            return {
+                "total": total,
+                "limit": limit,
+                "offset": offset,
+                "events": events,
+            }
+        finally:
+            connection.close()

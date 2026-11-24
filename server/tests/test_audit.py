@@ -133,3 +133,74 @@ def test_audit_store_does_not_store_raw_claim_or_evidence_text(tmp_path):
 
     assert "raw private claim text" not in stored_data
     assert "raw evidence excerpt" not in stored_data
+
+
+def test_list_events_returns_paginated_results(tmp_path):
+    audit = AuditStore(tmp_path / "audit.db")
+    audit.initialize()
+
+    first_id = audit.record_event(event_type="first")
+    second_id = audit.record_event(event_type="second")
+    third_id = audit.record_event(event_type="third")
+
+    result = audit.list_events(limit=2, offset=0)
+
+    assert result["total"] == 3
+    assert result["limit"] == 2
+    assert result["offset"] == 0
+    assert len(result["events"]) == 2
+
+    returned_ids = [event["event_id"] for event in result["events"]]
+    assert third_id in returned_ids
+    assert second_id in returned_ids
+    assert first_id not in returned_ids
+
+
+def test_list_events_supports_offset(tmp_path):
+    audit = AuditStore(tmp_path / "audit.db")
+    audit.initialize()
+
+    audit.record_event(event_type="first")
+    audit.record_event(event_type="second")
+    audit.record_event(event_type="third")
+
+    result = audit.list_events(limit=2, offset=2)
+
+    assert result["total"] == 3
+    assert len(result["events"]) == 1
+
+
+def test_list_events_filters_by_event_type(tmp_path):
+    audit = AuditStore(tmp_path / "audit.db")
+    audit.initialize()
+
+    audit.record_event(event_type="answer_generated")
+    audit.record_event(event_type="retrieval_completed")
+    audit.record_event(event_type="answer_generated")
+
+    result = audit.list_events(event_type="answer_generated")
+
+    assert result["total"] == 2
+    assert len(result["events"]) == 2
+    assert all(
+        event["event_type"] == "answer_generated"
+        for event in result["events"]
+    )
+
+
+@pytest.mark.parametrize(
+    "limit, offset",
+    [
+        (0, 0),
+        (101, 0),
+        (20, -1),
+    ],
+)
+def test_list_events_rejects_invalid_pagination(
+    tmp_path, limit, offset
+):
+    audit = AuditStore(tmp_path / "audit.db")
+    audit.initialize()
+
+    with pytest.raises(ValueError):
+        audit.list_events(limit=limit, offset=offset)

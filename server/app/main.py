@@ -14,7 +14,7 @@ from fastapi.responses import JSONResponse
 
 from app.core.dependencies import get_audit_store, get_settings
 from app.core.errors import EvidenceAIError
-from app.routes import chat, documents, evaluation, health
+from app.routes import audit, chat, documents, evaluation, health
 
 
 logging.basicConfig(
@@ -78,8 +78,8 @@ def create_app() -> FastAPI:
             content={"detail": "Internal server error."},
         )
 
-    for module in (health, documents, chat, evaluation):
-        app.include_router(module.router, prefix="/api")
+    for module in (health, documents, chat, evaluation, audit):
+         app.include_router(module.router, prefix="/api")
 
     if not settings.llm_configured:
         logger.warning(
