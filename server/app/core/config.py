@@ -65,6 +65,10 @@ class Settings:
         return self.data_dir / "metrics.json"
 
     @property
+    def audit_db_path(self) -> Path:
+        return self.data_dir / "audit.db"
+
+    @property
     def llm_configured(self) -> bool:
         return self.gemini_api_key.strip() not in PLACEHOLDER_KEYS
 

@@ -6,6 +6,7 @@ ChromaDB, Gemini) are replaced with the fakes from tests/helpers.py.
 import io
 import os
 import tempfile
+import sqlite3
 
 import pytest
 
@@ -22,6 +23,7 @@ from app.core.registry import DocumentRegistry  # noqa: E402
 from app.evaluation.metrics import MetricsStore  # noqa: E402
 from app.main import create_app  # noqa: E402
 from tests.helpers import SAMPLE_PAGES, FakeLLM, HashingEmbedder, InMemoryVectorStore, make_settings  # noqa: E402
+from app.audit.store import AuditStore
 
 
 @pytest.fixture
@@ -29,6 +31,10 @@ def client(tmp_path):
     settings = make_settings(tmp_path)
     registry = DocumentRegistry(settings.registry_path)
     metrics = MetricsStore(settings.metrics_path)
+
+    audit_store = AuditStore(settings.audit_db_path)
+    audit_store.initialize()
+
     embedder, store = HashingEmbedder(), InMemoryVectorStore()
     llm = FakeLLM([
     "The study covered a single city [E1].",
@@ -41,6 +47,7 @@ def client(tmp_path):
             deps.get_settings: lambda: settings,
             deps.get_registry: lambda: registry,
             deps.get_metrics: lambda: metrics,
+            deps.get_audit_store: lambda: audit_store,
             deps.get_embedder: lambda: embedder,
             deps.get_vector_store: lambda: store,
             deps.get_llm: lambda: llm,
@@ -150,3 +157,49 @@ def test_evaluation_summary_starts_at_zero(client):
     body = client.get("/api/evaluation/summary").json()
     assert body["questions_asked"] == 0
     assert body["evaluation_status"] == "Not yet evaluated"
+
+
+
+def test_chat_request_creates_persistent_audit_event(client, monkeypatch):
+    _fake_extractor_patch(monkeypatch)
+
+    upload = _upload(client)
+    assert upload.status_code == 200
+
+    response = client.post(
+        "/api/chat/ask",
+        json={
+            "question": "What are the limitations of the study?",
+            "document_ids": ["doc_001"],
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "answered"
+
+    audit_path = client.app.dependency_overrides[
+        deps.get_audit_store
+    ]().db_path
+
+    connection = sqlite3.connect(audit_path)
+    try:
+        rows = connection.execute(
+            """
+            SELECT event_type, document_ids,
+                   claim_status_counts, evidence_ids
+            FROM audit_events
+            """
+        ).fetchall()
+    finally:
+        connection.close()
+
+    assert len(rows) == 1
+
+    event_type, document_ids, claim_status_counts, evidence_ids = rows[0]
+
+    import json
+
+    assert event_type == "chat_response_answered"
+    assert json.loads(document_ids) == ["doc_001"]
+    assert json.loads(claim_status_counts) == {"supported": 1}
+    assert json.loads(evidence_ids) == ["E1"]
