@@ -1,9 +1,11 @@
 """Upload validation (Members 2 + 3). These run without a web server."""
 import io
+from unittest.mock import Mock
 
 import pytest
 
 from app.core.errors import UploadValidationError
+from app.document_processing import upload_service
 from app.document_processing.upload_service import handle_upload
 from app.document_processing.validation import (
     max_bytes,
@@ -129,3 +131,49 @@ def test_unexpected_error_does_not_leak_details(settings, registry, embedder, st
     record = _upload(settings, registry, embedder, store, b"%PDF-1.4 e", extractor=explode)
     assert record["status"] == "failed"
     assert "secret" not in record["message"]
+
+def test_registry_creation_failure_cleans_temp_file(
+    settings, registry, embedder, store
+):
+    broken_registry = Mock()
+    broken_registry.create.side_effect = RuntimeError("registry unavailable")
+
+    with pytest.raises(RuntimeError, match="registry unavailable"):
+        _upload(
+            settings,
+            broken_registry,
+            embedder,
+            store,
+            b"%PDF-1.4 test",
+        )
+
+    assert not list(settings.uploads_dir.glob("*.tmp"))
+
+
+def test_file_move_failure_cleans_temp_file(
+    settings, registry, embedder, store, monkeypatch
+):
+    original_replace = upload_service.Path.replace
+
+    def fail_upload_move(path, target):
+        if path.name.startswith("upload_") and path.suffix == ".tmp":
+            raise OSError("simulated file move failure")
+        return original_replace(path, target)
+
+    monkeypatch.setattr(upload_service.Path, "replace", fail_upload_move)
+
+    with pytest.raises(OSError, match="simulated file move failure"):
+        _upload(
+            settings,
+            registry,
+            embedder,
+            store,
+            b"%PDF-1.4 test",
+        )
+
+    assert not list(settings.uploads_dir.glob("*.tmp"))
+    record = registry.get("doc_001")
+    assert record["status"] == "failed"
+    assert record["message"] == (
+        "The uploaded file could not be saved. Please try again."
+    )

@@ -15,7 +15,11 @@ from app.core.errors import EvidenceAIError, UploadValidationError
 from app.core.registry import DocumentRegistry
 from app.document_processing.extractor import extract_pdf
 from app.document_processing.processing import process_document
-from app.document_processing.validation import max_bytes, validate_filename, validate_pdf_header
+from app.document_processing.validation import (
+    max_bytes,
+    validate_filename,
+    validate_pdf_header,
+)
 
 logger = logging.getLogger("evidenceai.upload")
 READ_BLOCK = 1024 * 1024  # 1 MB
@@ -27,28 +31,38 @@ def _save_stream_to_temp(stream: BinaryIO, settings: Settings) -> tuple[Path, in
     limit = max_bytes(settings.max_upload_mb)
     temp_path = settings.uploads_dir / f"upload_{uuid.uuid4().hex}.tmp"
     size = 0
+
     try:
         with open(temp_path, "wb") as out:
             first = True
+
             while True:
                 block = stream.read(READ_BLOCK)
                 if not block:
                     break
+
                 if first:
                     validate_pdf_header(block)
                     first = False
+
                 size += len(block)
+
                 if size > limit:
                     raise UploadValidationError(
-                        f"File is too large. The maximum size is {settings.max_upload_mb} MB.",
+                        f"File is too large. The maximum size is "
+                        f"{settings.max_upload_mb} MB.",
                         status_code=413,
                     )
+
                 out.write(block)
+
         if size == 0:
             raise UploadValidationError("The uploaded file is empty.")
+
     except Exception:
         temp_path.unlink(missing_ok=True)
         raise
+
     return temp_path, size
 
 
@@ -65,7 +79,7 @@ def handle_upload(
     """Validate and process an uploaded PDF. Returns the document's registry record.
 
     Raises UploadValidationError for rejected files (HTTP 400/413). Problems that
-    happen *during processing* do not raise: they are stored on the document as
+    happen during processing do not raise: they are stored on the document as
     status "failed" with a safe message, so the dashboard can show them.
     """
     if extractor is None:
@@ -73,43 +87,79 @@ def handle_upload(
             path,
             max_pages=settings.max_pdf_pages,
         )
+
     safe_name = validate_filename(filename)
     temp_path, size = _save_stream_to_temp(stream, settings)
 
-    record = registry.create(safe_name, size)
-    document_id = record["document_id"]
-    pdf_path = settings.uploads_dir / f"{document_id}.pdf"  # our own name: no path tricks
-    temp_path.replace(pdf_path)
-
     try:
-        result = process_document(
-            document_id=document_id,
-            filename=safe_name,
-            pdf_path=pdf_path,
-            settings=settings,
-            embedder=embedder,
-            store=store,
-            extractor=extractor,
-        )
-        return registry.update(
-            document_id,
-            status=result.status,
-            message=result.message,
-            page_count=result.page_count,
-            pages_with_text=result.pages_with_text,
-            chunk_count=result.chunk_count,
-            pages=result.pages,
-        )
-    except Exception as exc:
-        # Log the technical details on the server only; show the user a safe message.
-        logger.exception("Processing failed for %s", document_id)
-        message = (
-            exc.message
-            if isinstance(exc, EvidenceAIError)
-            else "Processing failed unexpectedly. Check the server logs for details."
-        )
+        record = registry.create(safe_name, size)
+        document_id = record["document_id"]
+        pdf_path = settings.uploads_dir / f"{document_id}.pdf"
+
         try:
-            store.delete_document(document_id)  # do not leave half-indexed chunks behind
-        except Exception:  # pragma: no cover - best effort cleanup
-            logger.exception("Cleanup failed for %s", document_id)
-        return registry.update(document_id, status="failed", message=message)
+            temp_path.replace(pdf_path)
+        except Exception:
+            logger.exception(
+                "Failed to move uploaded PDF for %s",
+                document_id,
+            )
+
+            try:
+                registry.update(
+                    document_id,
+                    status="failed",
+                    message="The uploaded file could not be saved. Please try again.",
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to update registry after file move failure for %s",
+                    document_id,
+                )
+
+            raise
+
+        try:
+            result = process_document(
+                document_id=document_id,
+                filename=safe_name,
+                pdf_path=pdf_path,
+                settings=settings,
+                embedder=embedder,
+                store=store,
+                extractor=extractor,
+            )
+
+            return registry.update(
+                document_id,
+                status=result.status,
+                message=result.message,
+                page_count=result.page_count,
+                pages_with_text=result.pages_with_text,
+                chunk_count=result.chunk_count,
+                pages=result.pages,
+            )
+
+        except Exception as exc:
+            # Log technical details on the server only.
+            logger.exception("Processing failed for %s", document_id)
+
+            message = (
+                exc.message
+                if isinstance(exc, EvidenceAIError)
+                else "Processing failed unexpectedly. Check the server logs for details."
+            )
+
+            try:
+                store.delete_document(document_id)
+            except Exception:  # pragma: no cover - best effort cleanup
+                logger.exception("Cleanup failed for %s", document_id)
+
+            return registry.update(
+                document_id,
+                status="failed",
+                message=message,
+            )
+
+    finally:
+        # Always remove the temporary file, including registry or move failures.
+        temp_path.unlink(missing_ok=True)
