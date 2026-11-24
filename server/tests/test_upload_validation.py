@@ -177,3 +177,113 @@ def test_file_move_failure_cleans_temp_file(
     assert record["message"] == (
         "The uploaded file could not be saved. Please try again."
     )
+
+
+def test_partial_vector_storage_failure_cleans_document_chunks(
+    settings, registry, embedder, store, fake_extractor
+):
+    class PartiallyFailingStore:
+        def add_chunks(self, chunks, embeddings):
+            # Simulate a storage operation that writes some chunks
+            # before encountering an error.
+            store.add_chunks(chunks[:1], embeddings[:1])
+            raise RuntimeError("simulated partial storage failure")
+
+        def delete_document(self, document_id):
+            store.delete_document(document_id)
+
+    record = _upload(
+        settings,
+        registry,
+        embedder,
+        PartiallyFailingStore(),
+        b"%PDF-1.4 partial",
+        extractor=fake_extractor,
+    )
+
+    assert record["status"] == "failed"
+    assert store.count() == 0
+    assert registry.get(record["document_id"])["status"] == "failed"
+
+
+def test_partial_storage_cleanup_failure_keeps_document_failed(
+    settings, registry, embedder, store, fake_extractor
+):
+    class FailingCleanupStore:
+        def add_chunks(self, chunks, embeddings):
+            store.add_chunks(chunks[:1], embeddings[:1])
+            raise RuntimeError("simulated storage failure")
+
+        def delete_document(self, document_id):
+            raise RuntimeError("simulated cleanup failure")
+
+    record = _upload(
+        settings,
+        registry,
+        embedder,
+        FailingCleanupStore(),
+        b"%PDF-1.4 cleanup",
+        extractor=fake_extractor,
+    )
+
+    assert record["status"] == "failed"
+    assert registry.get(record["document_id"])["status"] == "failed"
+
+    # Cleanup failed, so the partial chunk remains.
+    assert store.count() == 1
+
+
+def test_final_registry_update_failure_cleans_stored_chunks(
+    settings, registry, embedder, store, fake_extractor
+):
+    original_update = registry.update
+
+    def fail_success_update(document_id, **fields):
+        if fields.get("status") == "processed":
+            raise RuntimeError("simulated registry update failure")
+        return original_update(document_id, **fields)
+
+    registry.update = fail_success_update
+
+    record = _upload(
+        settings,
+        registry,
+        embedder,
+        store,
+        b"%PDF-1.4 registry",
+        extractor=fake_extractor,
+    )
+
+    # The upload service catches the registry update failure.
+    assert record["status"] == "failed"
+
+    # Successfully stored chunks are removed during failure cleanup.
+    assert store.count() == 0
+
+    # The registry successfully records the failed status.
+    assert registry.get(record["document_id"])["status"] == "failed"
+
+
+def test_registry_update_failure_leaves_processing_record_but_cleans_chunks(
+    settings, registry, embedder, store, fake_extractor
+):
+    def fail_updates(document_id, **fields):
+        raise RuntimeError("simulated registry update failure")
+
+    registry.update = fail_updates
+
+    with pytest.raises(RuntimeError, match="simulated registry update failure"):
+        _upload(
+            settings,
+            registry,
+            embedder,
+            store,
+            b"%PDF-1.4 registry",
+            extractor=fake_extractor,
+        )
+
+    # Stored chunks are cleaned even though the registry update fails.
+    assert store.count() == 0
+
+    # The registry record remains in its original processing state.
+    assert registry.get("doc_001")["status"] == "processing"
