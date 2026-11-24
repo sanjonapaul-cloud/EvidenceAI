@@ -12,6 +12,22 @@ vi.mock("../services/api.js", () => ({
   listAuditEvents: vi.fn(),
 }));
 
+async function unlockAuditPage() {
+  render(<AuditPage />);
+
+  fireEvent.change(screen.getByLabelText("Audit API key"), {
+    target: { value: "test-audit-secret" },
+  });
+
+  fireEvent.click(
+    screen.getByRole("button", { name: "Unlock audit trail" })
+  );
+
+  await waitFor(() => {
+    expect(listAuditEvents).toHaveBeenCalled();
+  });
+}
+
 describe("AuditPage", () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -24,8 +40,22 @@ describe("AuditPage", () => {
     });
   });
 
-  it("renders the audit heading and empty state", async () => {
+  it("does not request audit events before the key is submitted", () => {
     render(<AuditPage />);
+
+    expect(
+      screen.getByLabelText("Audit API key")
+    ).toHaveAttribute("type", "password");
+
+    expect(
+      screen.getByRole("button", { name: "Unlock audit trail" })
+    ).toBeDisabled();
+
+    expect(listAuditEvents).not.toHaveBeenCalled();
+  });
+
+  it("renders the audit heading and empty state", async () => {
+    await unlockAuditPage();
 
     expect(
       screen.getByRole("heading", { name: "Audit Trail" })
@@ -38,6 +68,7 @@ describe("AuditPage", () => {
       limit: 20,
       offset: 0,
       eventType: "",
+      apiKey: "test-audit-secret",
     });
   });
 
@@ -64,7 +95,7 @@ describe("AuditPage", () => {
       ],
     });
 
-    render(<AuditPage />);
+    await unlockAuditPage();
 
     expect(
       await screen.findByText("chat_response_answered")
@@ -85,7 +116,7 @@ describe("AuditPage", () => {
   });
 
   it("filters events by event type", async () => {
-    render(<AuditPage />);
+    await unlockAuditPage();
 
     await screen.findByText("No audit events found.");
 
@@ -98,6 +129,7 @@ describe("AuditPage", () => {
         limit: 20,
         offset: 0,
         eventType: "chat_response_answered",
+        apiKey: "test-audit-secret",
       });
     });
   });
@@ -112,7 +144,7 @@ describe("AuditPage", () => {
         events: [],
       });
 
-    render(<AuditPage />);
+    await unlockAuditPage();
 
     expect(
       await screen.findByText("Could not load audit events.")
@@ -162,7 +194,7 @@ describe("AuditPage", () => {
         ],
       });
 
-    render(<AuditPage />);
+    await unlockAuditPage();
 
     expect(await screen.findByText("Page 1 of 2 · 21 events"))
       .toBeInTheDocument();
@@ -179,6 +211,7 @@ describe("AuditPage", () => {
       limit: 20,
       offset: 20,
       eventType: "",
+      apiKey: "test-audit-secret",
     });
   });
 
@@ -231,7 +264,7 @@ describe("AuditPage", () => {
         ],
       });
 
-    render(<AuditPage />);
+    await unlockAuditPage();
 
     await screen.findByText("request-1");
 
@@ -249,6 +282,7 @@ describe("AuditPage", () => {
       limit: 20,
       offset: 0,
       eventType: "",
+      apiKey: "test-audit-secret",
     });
   });
 });

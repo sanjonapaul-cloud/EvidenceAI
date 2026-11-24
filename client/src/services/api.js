@@ -51,7 +51,12 @@ export const askQuestion = ({ question, documentIds, sessionId }) =>
 // GET /api/evaluation/summary
 export const getEvaluationSummary = () => request("/evaluation/summary");
 // GET /api/audit/events -> paginated audit events
-export const listAuditEvents = ({ limit = 20, offset = 0, eventType = "" } = {}) => {
+export const listAuditEvents = ({
+  limit = 20,
+  offset = 0,
+  eventType = "",
+  apiKey,
+} = {}) => {
   const params = new URLSearchParams({
     limit: String(limit),
     offset: String(offset),
@@ -61,5 +66,9 @@ export const listAuditEvents = ({ limit = 20, offset = 0, eventType = "" } = {})
     params.set("event_type", eventType);
   }
 
-  return request(`/audit/events?${params.toString()}`);
+  return request(`/audit/events?${params.toString()}`, {
+    headers: {
+      "X-Audit-API-Key": apiKey,
+    },
+  });
 };

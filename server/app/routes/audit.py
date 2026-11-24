@@ -4,8 +4,13 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.audit.store import AuditStore
 from app.core.dependencies import get_audit_store
+from app.core.security import require_audit_api_key
 
-router = APIRouter(prefix="/audit", tags=["Audit"])
+router = APIRouter(
+    prefix="/audit",
+    tags=["Audit"],
+    dependencies=[Depends(require_audit_api_key)],
+)
 
 
 @router.get("/events")

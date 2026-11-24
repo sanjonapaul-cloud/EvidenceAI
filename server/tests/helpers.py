@@ -115,6 +115,7 @@ SAMPLE_PAGES = {
 def make_settings(tmp_path, **overrides) -> Settings:
     values = dict(
         gemini_api_key="",
+        audit_api_key="",
         gemini_model="test-model",
         embedding_model="test-embedder",
         data_dir=tmp_path,

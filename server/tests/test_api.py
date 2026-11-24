@@ -28,7 +28,7 @@ from app.audit.store import AuditStore
 
 @pytest.fixture
 def client(tmp_path):
-    settings = make_settings(tmp_path)
+    settings = make_settings(tmp_path, audit_api_key="test-audit-secret")
     registry = DocumentRegistry(settings.registry_path)
     metrics = MetricsStore(settings.metrics_path)
 
@@ -53,7 +53,7 @@ def client(tmp_path):
             deps.get_llm: lambda: llm,
         }
     )
-    test_client = TestClient(app)
+    test_client = TestClient(app, headers={"X-Audit-API-Key": "test-audit-secret"})
     test_client.llm = llm
     return test_client
 
@@ -382,3 +382,33 @@ def test_audit_events_endpoint_rejects_invalid_parameters(
     response = client.get("/api/audit/events", params=params)
 
     assert response.status_code == 422
+
+
+def test_audit_events_requires_valid_api_key(client):
+    unauthenticated_client = TestClient(client.app)
+
+    missing_key_response = unauthenticated_client.get("/api/audit/events")
+    assert missing_key_response.status_code == 401
+
+    wrong_key_response = unauthenticated_client.get(
+        "/api/audit/events",
+        headers={"X-Audit-API-Key": "wrong-test-key"},
+    )
+    assert wrong_key_response.status_code == 401
+
+    valid_key_response = client.get("/api/audit/events")
+    assert valid_key_response.status_code == 200
+
+
+def test_audit_events_fails_closed_when_server_key_is_not_configured(
+    client, tmp_path
+):
+    client.app.dependency_overrides[deps.get_settings] = (
+        lambda: make_settings(tmp_path, audit_api_key="")
+    )
+
+    unauthenticated_client = TestClient(client.app)
+    response = unauthenticated_client.get("/api/audit/events")
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "Audit access is not configured."

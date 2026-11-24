@@ -37,10 +37,14 @@ export default function AuditPage() {
   const [total, setTotal] = useState(0);
   const [offset, setOffset] = useState(0);
   const [eventType, setEventType] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [apiKey, setApiKey] = useState("");
+  const [activeApiKey, setActiveApiKey] = useState("");
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
 
   const loadEvents = useCallback(async () => {
+    if (!activeApiKey) return;
+
     setLoading(true);
     setError("");
 
@@ -49,6 +53,7 @@ export default function AuditPage() {
         limit: PAGE_SIZE,
         offset,
         eventType,
+        apiKey: activeApiKey,
       });
 
       setEvents(data.events ?? []);
@@ -60,11 +65,27 @@ export default function AuditPage() {
     } finally {
       setLoading(false);
     }
-  }, [offset, eventType]);
+  }, [offset, eventType, activeApiKey]);
 
   useEffect(() => {
-    loadEvents();
-  }, [loadEvents]);
+    if (activeApiKey) {
+      loadEvents();
+    }
+  }, [activeApiKey, loadEvents]);
+
+  function unlockAudit(event) {
+    event.preventDefault();
+    const submittedKey = apiKey.trim();
+
+    if (!submittedKey) {
+      setError("Enter the audit API key to continue.");
+      return;
+    }
+
+    setOffset(0);
+    setError("");
+    setActiveApiKey(submittedKey);
+  }
 
   function changeFilter(value) {
     setEventType(value);
@@ -88,7 +109,27 @@ export default function AuditPage() {
         </p>
       </header>
 
-      <div className="stat-grid">
+      <form className="card audit-auth-form" onSubmit={unlockAudit}>
+        <h2 className="card-title">Administrator access</h2>
+        <p className="muted small">
+          Enter the audit API key provided by your server administrator.
+        </p>
+        <label htmlFor="audit-api-key">Audit API key</label>
+        <input
+          id="audit-api-key"
+          className="input"
+          type="password"
+          value={apiKey}
+          onChange={(event) => setApiKey(event.target.value)}
+          autoComplete="off"
+          placeholder="Enter audit API key"
+        />
+        <button className="btn btn-primary" type="submit" disabled={!apiKey.trim()}>
+          Unlock audit trail
+        </button>
+      </form>
+
+      <div className="stat-grid" hidden={!activeApiKey}>
         <div className="stat">
           <div className="stat-value">{total}</div>
           <div className="stat-label">Total matching events</div>
@@ -99,7 +140,7 @@ export default function AuditPage() {
         </div>
       </div>
 
-      <section className="card">
+      <section className="card" hidden={!activeApiKey}>
         <div className="card-head">
           <h2 className="card-title">Event history</h2>
 

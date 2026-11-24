@@ -37,6 +37,7 @@ def _get_float(name: str, default: float) -> float:
 @dataclass(frozen=True)
 class Settings:
     gemini_api_key: str
+    audit_api_key: str
     gemini_model: str
     embedding_model: str
     data_dir: Path
@@ -86,6 +87,7 @@ def load_settings() -> Settings:
     origins = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
     return Settings(
         gemini_api_key=os.getenv("GEMINI_API_KEY", ""),
+        audit_api_key=os.getenv("AUDIT_API_KEY", ""),
         gemini_model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
         embedding_model=os.getenv(
             "EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2"
