@@ -120,6 +120,7 @@ def make_settings(tmp_path, **overrides) -> Settings:
         embedding_model="test-embedder",
         data_dir=tmp_path,
         max_upload_mb=1,
+        max_pdf_pages=500,
         chunk_size=300,
         chunk_overlap=50,
         top_k=5,

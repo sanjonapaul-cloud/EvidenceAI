@@ -68,7 +68,11 @@ def handle_upload(
     happen *during processing* do not raise: they are stored on the document as
     status "failed" with a safe message, so the dashboard can show them.
     """
-    extractor = extractor or extract_pdf  # resolved at call time (tests can swap it)
+    if extractor is None:
+        extractor = lambda path: extract_pdf(
+            path,
+            max_pages=settings.max_pdf_pages,
+        )
     safe_name = validate_filename(filename)
     temp_path, size = _save_stream_to_temp(stream, settings)
 

@@ -62,7 +62,7 @@ def _fake_extractor_patch(monkeypatch):
     from app.document_processing import upload_service
     from app.document_processing.models import ExtractionResult, PageText
 
-    def fake(_path):
+    def fake(_path, *, max_pages=500):
         pages = [PageText(n, t) for n, t in SAMPLE_PAGES.items()]
         return ExtractionResult(page_count=len(pages), pages=pages)
 

@@ -27,6 +27,12 @@ def _get_int(name: str, default: int) -> int:
         return default
 
 
+def _get_positive_int(name: str, default: int) -> int:
+    """Read a positive integer, falling back to the default otherwise."""
+    value = _get_int(name, default)
+    return value if value > 0 else default
+
+
 def _get_float(name: str, default: float) -> float:
     try:
         return float(os.getenv(name, str(default)))
@@ -42,6 +48,7 @@ class Settings:
     embedding_model: str
     data_dir: Path
     max_upload_mb: int
+    max_pdf_pages: int
     chunk_size: int
     chunk_overlap: int
     top_k: int
@@ -94,6 +101,7 @@ def load_settings() -> Settings:
         ),
         data_dir=data_dir,
         max_upload_mb=_get_int("MAX_UPLOAD_MB", 20),
+        max_pdf_pages=_get_positive_int("MAX_PDF_PAGES", 500),
         chunk_size=_get_int("CHUNK_SIZE", 800),
         chunk_overlap=_get_int("CHUNK_OVERLAP", 150),
         top_k=_get_int("TOP_K", 5),
