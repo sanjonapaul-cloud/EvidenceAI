@@ -103,3 +103,19 @@ class ChromaVectorStore:
 
     def count(self) -> int:
         return self._collection.count()
+
+    def list_document_ids(self) -> set[str]:
+        """Return unique document IDs represented in the vector collection."""
+        try:
+            result = self._collection.get(include=["metadatas"])
+            metadatas = result.get("metadatas") or []
+            return {
+                metadata["document_id"]
+                for metadata in metadatas
+                if metadata and metadata.get("document_id")
+            }
+        except Exception as exc:
+            logger.exception("ChromaDB document ID listing failed")
+            raise VectorStoreError(
+                "Listing document IDs from the vector database failed."
+            ) from exc

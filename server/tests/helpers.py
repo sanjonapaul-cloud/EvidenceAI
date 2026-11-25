@@ -75,6 +75,9 @@ class InMemoryVectorStore:
     def count(self):
         return len(self.rows)
 
+    def list_document_ids(self):
+        return {chunk.document_id for chunk, _ in self.rows}
+
 
 class FakeLLM:
     def __init__(self, reply="", configured=True, fail=False):
