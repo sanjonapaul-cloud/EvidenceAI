@@ -1,5 +1,4 @@
-
-"""POST /api/chat/ask (Member 2)."""
+﻿"""POST /api/chat/ask (Member 2)."""
 
 from uuid import uuid4
 
@@ -15,6 +14,7 @@ from app.core.dependencies import (
 from app.core.registry import DocumentRegistry
 from app.evaluation.metrics import MetricsStore
 from app.audit.store import AuditStore
+from app.citations.trust_report import build_trust_report
 from app.rag.chat_service import ask_question
 from app.schemas import ChatRequest, ChatResponse
 
@@ -38,6 +38,9 @@ def ask(
         llm=llm,
         metrics=metrics,
     )
+
+    # Build deterministic evidence coverage from existing claim assessments.
+    trust_report = build_trust_report(result.claims)
 
     # Collect only identifiers and claim statuses, never raw text.
     evidence_ids = {
@@ -65,4 +68,5 @@ def ask(
         citations=result.citations,
         note=result.note,
         claims=result.claims,
+        trust_report=trust_report,
     )

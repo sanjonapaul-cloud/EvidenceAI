@@ -132,12 +132,32 @@ def test_upload_list_chat_and_evaluation_flow(client, monkeypatch):
     assert data["citations"][0]["char_end"] > data["citations"][0]["char_start"]
     assert isinstance(data["claims"], list)
 
+    # Trust Report: the fixture's single claim is fully supported.
+    trust_report = data["trust_report"]
+    assert trust_report["total_claims"] == 1
+    assert trust_report["supported"] == 1
+    assert trust_report["partially_supported"] == 0
+    assert trust_report["contradicted"] == 0
+    assert trust_report["insufficient"] == 0
+    assert trust_report["unsupported"] == 0
+    assert trust_report["coverage_percent"] == 100.0
+    assert trust_report["gaps"] == []
+    assert trust_report["warnings"] == []
+
     insufficient = client.post(
         "/api/chat/ask", json={"question": "Explain quantum chromodynamics gluons", "document_ids": ["doc_001"]}
     ).json()
     assert insufficient["status"] == "insufficient_evidence"
     assert insufficient["citations"] == []
     assert insufficient["answer"].startswith("Insufficient evidence in the uploaded documents")
+
+    # No retrieved evidence means no claims and no calculable coverage.
+    empty_report = insufficient["trust_report"]
+    assert empty_report["total_claims"] == 0
+    assert empty_report["coverage_percent"] is None
+    assert empty_report["unsupported"] == 0
+    assert empty_report["gaps"] == []
+    assert empty_report["warnings"]
 
     summary = client.get("/api/evaluation/summary").json()
     assert summary["questions_asked"] == 2

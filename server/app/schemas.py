@@ -96,6 +96,17 @@ class ClaimAssessment(BaseModel):
     explanation: str
     sources: List[Citation] = Field(default_factory=list)
 
+class TrustReport(BaseModel):
+    total_claims: int
+    supported: int
+    partially_supported: int
+    contradicted: int
+    insufficient: int
+    unsupported: int
+    coverage_percent: Optional[float] = None
+    gaps: List[dict] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
+
 
 class ChatResponse(BaseModel):
     answer: str
@@ -103,6 +114,7 @@ class ChatResponse(BaseModel):
     citations: List[Citation]
     note: Optional[str] = None
     claims: List[ClaimAssessment] = Field(default_factory=list)
+    trust_report: Optional[TrustReport] = None
 
 
 class EvaluationSummary(BaseModel):

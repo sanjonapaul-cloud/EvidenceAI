@@ -1,4 +1,5 @@
 import CitationCard from "./CitationCard.jsx";
+import TrustReport from "./TrustReport.jsx";
 
 const STATUS_LABEL = {
   answered: { text: "Answer based on your documents", cls: "badge-green" },
@@ -42,6 +43,8 @@ export default function ChatMessage({ message }) {
         {label && <span className={`badge ${label.cls}`}>{label.text}</span>}
         <p className="answer-text">{message.text}</p>
         {message.note && <p className="muted small">{message.note}</p>}
+
+        <TrustReport report={message.trustReport} />
 
         {claims.length > 0 && (
           <div className="citations">
