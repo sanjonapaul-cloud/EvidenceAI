@@ -54,7 +54,17 @@ class InMemoryVectorStore:
                 continue
             score = sum(a * b for a, b in zip(embedding, emb))  # cosine (vectors are unit length)
             scored.append(
-                RetrievedChunk(chunk.chunk_id, chunk.document_id, chunk.filename, chunk.page, chunk.text, score)
+                RetrievedChunk(
+                    chunk_id=chunk.chunk_id,
+                    document_id=chunk.document_id,
+                    filename=chunk.filename,
+                    page=chunk.page,
+                    text=chunk.text,
+                    score=score,
+                    chunk_index=chunk.chunk_index,
+                    char_start=chunk.char_start,
+                    char_end=chunk.char_end,
+                )
             )
         scored.sort(key=lambda h: h.score, reverse=True)
         return scored[:top_k]
@@ -65,40 +75,35 @@ class InMemoryVectorStore:
     def count(self):
         return len(self.rows)
 
+    def list_document_ids(self):
+        return {chunk.document_id for chunk, _ in self.rows}
+
 
 class FakeLLM:
-    """Returns a scripted reply and counts calls."""
-
     def __init__(self, reply="", configured=True, fail=False):
         self.reply = reply
+        self.responses = (
+            list(reply) if isinstance(reply, (list, tuple)) else [reply]
+        )
         self.is_configured = configured
         self.fail = fail
         self.calls = 0
         self.last_prompt = None
+        self.prompts = []
 
     def generate(self, system_instruction, prompt):
         self.calls += 1
         self.last_prompt = prompt
+        self.prompts.append((system_instruction, prompt))
+
         if self.fail:
             raise LLMError("boom")
-        return self.reply
 
+        if not self.responses:
+            return ""
 
-def make_settings(tmp_path, **overrides) -> Settings:
-    values = dict(
-        gemini_api_key="",
-        gemini_model="test-model",
-        embedding_model="test-embedder",
-        data_dir=tmp_path,
-        max_upload_mb=1,
-        chunk_size=300,
-        chunk_overlap=50,
-        top_k=5,
-        min_relevance_score=0.2,
-        cors_origins=["http://localhost:5173"],
-    )
-    values.update(overrides)
-    return Settings(**values)
+        response_index = min(self.calls - 1, len(self.responses) - 1)
+        return self.responses[response_index]
 
 
 # A tiny fake "PDF" content: pages of text used by fake extractors.
@@ -110,3 +115,20 @@ SAMPLE_PAGES = {
     3: "Limitations: the study covered a single city and only one summer, so results may not "
     "generalise. Coating durability over several years was not measured.",
 }
+def make_settings(tmp_path, **overrides) -> Settings:
+    values = dict(
+        gemini_api_key="",
+        audit_api_key="",
+        gemini_model="test-model",
+        embedding_model="test-embedder",
+        data_dir=tmp_path,
+        max_upload_mb=1,
+        max_pdf_pages=500,
+        chunk_size=300,
+        chunk_overlap=50,
+        top_k=5,
+        min_relevance_score=0.2,
+        cors_origins=["http://localhost:5173"],
+    )
+    values.update(overrides)
+    return Settings(**values)

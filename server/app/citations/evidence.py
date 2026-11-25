@@ -30,6 +30,10 @@ class Evidence:
     page: int
     text: str
     score: float
+    chunk_id: str
+    chunk_index: int | None = None
+    char_start: int | None = None
+    char_end: int | None = None
 
 
 @dataclass
@@ -49,6 +53,10 @@ def build_evidence(hits: Sequence[RetrievedChunk]) -> list[Evidence]:
             page=h.page,
             text=h.text,
             score=h.score,
+            chunk_id=h.chunk_id,
+            chunk_index=h.chunk_index,
+            char_start=h.char_start,
+            char_end=h.char_end,
         )
         for i, h in enumerate(hits, start=1)
     ]
@@ -72,6 +80,10 @@ def evidence_to_citation(ev: Evidence) -> dict:
         "page": ev.page,
         "evidence_id": ev.evidence_id,
         "excerpt": make_excerpt(ev.text),
+        "chunk_id": ev.chunk_id,
+        "chunk_index": ev.chunk_index,
+        "char_start": ev.char_start,
+        "char_end": ev.char_end,
     }
 
 

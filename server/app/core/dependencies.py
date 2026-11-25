@@ -12,6 +12,7 @@ from fastapi import Depends
 
 from app.core.config import Settings, load_settings
 from app.core.registry import DocumentRegistry
+from app.audit.store import AuditStore
 from app.embeddings.embedder import SentenceTransformerEmbedder
 from app.evaluation.metrics import MetricsStore
 from app.rag.gemini_client import GeminiLLM
@@ -32,6 +33,10 @@ def get_registry() -> DocumentRegistry:
 @lru_cache
 def get_metrics() -> MetricsStore:
     return MetricsStore(get_settings().metrics_path)
+
+@lru_cache
+def get_audit_store() -> AuditStore:
+    return AuditStore(get_settings().audit_db_path)
 
 
 @lru_cache

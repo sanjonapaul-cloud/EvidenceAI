@@ -11,7 +11,10 @@ from app.core.errors import PdfExtractionError
 from app.document_processing.models import ExtractionResult, PageText
 
 
-def extract_pdf(pdf_path: Path) -> ExtractionResult:
+def extract_pdf(pdf_path: Path, *, max_pages: int = 500) -> ExtractionResult:
+    if max_pages <= 0:
+        raise ValueError("max_pages must be greater than zero")
+
     try:
         import fitz  # PyMuPDF's import name
     except ImportError as exc:  # pragma: no cover - depends on the environment
@@ -30,6 +33,12 @@ def extract_pdf(pdf_path: Path) -> ExtractionResult:
             raise PdfExtractionError("This PDF is password protected and cannot be read.")
         if document.page_count == 0:
             raise PdfExtractionError("This PDF has no pages.")
+        if document.page_count > max_pages:
+            raise PdfExtractionError(
+                f"This PDF has {document.page_count} pages. "
+                f"The maximum supported is {max_pages}.",
+                status_code=413,
+            )
 
         pages = []
         for index in range(document.page_count):

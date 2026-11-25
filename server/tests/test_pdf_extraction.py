@@ -62,3 +62,24 @@ def test_bundled_sample_pdf_has_expected_pages():
     result = extract_pdf(SAMPLE_PDF)
     assert result.page_count == 3
     assert "Limitations" in result.pages[2].text
+
+
+def test_pdf_at_page_limit_is_accepted(tmp_path):
+    pdf = tmp_path / "at_limit.pdf"
+    _make_pdf(pdf, ["Page one.", "Page two.", "Page three."])
+
+    result = extract_pdf(pdf, max_pages=3)
+
+    assert result.page_count == 3
+    assert len(result.pages) == 3
+
+
+def test_pdf_over_page_limit_is_rejected(tmp_path):
+    pdf = tmp_path / "over_limit.pdf"
+    _make_pdf(pdf, ["Page one.", "Page two.", "Page three."])
+
+    with pytest.raises(PdfExtractionError) as exc:
+        extract_pdf(pdf, max_pages=2)
+
+    assert exc.value.status_code == 413
+    assert "maximum supported is 2" in str(exc.value).lower()

@@ -52,6 +52,8 @@ export default function ChatPage({
           status: data.status,
           citations: data.citations,
           note: data.note,
+          claims: data.claims ?? [],
+          trustReport: data.trust_report ?? null,
         },
       ]);
     } catch (err) {

@@ -98,6 +98,7 @@ Request:
 
 Response `200`:
 ```json
+
 {
   "answer": "The study covered a single city and one summer [E1].",
   "status": "answered",
@@ -107,11 +108,37 @@ Response `200`:
       "filename": "research_paper.pdf",
       "page": 3,
       "evidence_id": "E1",
-      "excerpt": "Limitations: The study covered a single city and only one summer..."
+      "excerpt": "Limitations: The study covered a single city and only one summer...",
+      "chunk_id": "doc_001_p3_c2",
+      "chunk_index": 2,
+      "char_start": 600,
+      "char_end": 780
     }
   ],
-  "note": null
+  "note": null,
+  "claims": [
+    {
+      "claim": "The study covered a single city and one summer.",
+      "evidence_ids": ["E1"],
+      "status": "supported",
+      "explanation": "The cited passage directly supports this claim.",
+      "sources": [
+        {
+          "document_id": "doc_001",
+          "filename": "research_paper.pdf",
+          "page": 3,
+          "evidence_id": "E1",
+          "excerpt": "Limitations: The study covered a single city and only one summer...",
+          "chunk_id": "doc_001_p3_c2",
+          "chunk_index": 2,
+          "char_start": 600,
+          "char_end": 780
+        }
+      ]
+    }
+  ]
 }
+
 ```
 
 `status` values:
@@ -127,6 +154,20 @@ For `insufficient_evidence` the `answer` is exactly:
 `"Insufficient evidence in the uploaded documents to answer this question reliably."` and `note` explains what to try.
 
 Citation rules: `excerpt` is always the beginning (up to 300 characters) of a chunk stored in ChromaDB; `filename`, `page` and `document_id` come from the stored chunk metadata, never from the AI's text. `page` is the 1-based PDF page index.
+
+Each citation includes chunk-level provenance:
+- `chunk_id`: identifier of the stored document chunk.
+- `chunk_index`: zero-based chunk position within the document.
+- `char_start` and `char_end`: character offsets identifying the chunk's range in the extracted document text.
+
+The `claims` array contains claim-level verification assessments:
+- `claim`: individual statement extracted from the generated answer.
+- `evidence_ids`: evidence markers associated with that claim.
+- `status`: `supported`, `partially_supported`, `contradicted`, or `insufficient`.
+- `explanation`: the verifier's assessment explanation.
+- `sources`: citation objects containing the stored evidence provenance associated with the claim.
+
+`claims` defaults to an empty array when no claim assessments are available. Claim-level sources and overall answer citations serve different purposes: the former map evidence to individual claims, while the latter represent the answer's cited evidence.
 
 Errors:
 

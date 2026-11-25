@@ -27,6 +27,12 @@ def _get_int(name: str, default: int) -> int:
         return default
 
 
+def _get_positive_int(name: str, default: int) -> int:
+    """Read a positive integer, falling back to the default otherwise."""
+    value = _get_int(name, default)
+    return value if value > 0 else default
+
+
 def _get_float(name: str, default: float) -> float:
     try:
         return float(os.getenv(name, str(default)))
@@ -37,10 +43,12 @@ def _get_float(name: str, default: float) -> float:
 @dataclass(frozen=True)
 class Settings:
     gemini_api_key: str
+    audit_api_key: str
     gemini_model: str
     embedding_model: str
     data_dir: Path
     max_upload_mb: int
+    max_pdf_pages: int
     chunk_size: int
     chunk_overlap: int
     top_k: int
@@ -65,6 +73,10 @@ class Settings:
         return self.data_dir / "metrics.json"
 
     @property
+    def audit_db_path(self) -> Path:
+        return self.data_dir / "audit.db"
+
+    @property
     def llm_configured(self) -> bool:
         return self.gemini_api_key.strip() not in PLACEHOLDER_KEYS
 
@@ -82,12 +94,14 @@ def load_settings() -> Settings:
     origins = os.getenv("CORS_ORIGINS", "http://localhost:5173,http://127.0.0.1:5173")
     return Settings(
         gemini_api_key=os.getenv("GEMINI_API_KEY", ""),
+        audit_api_key=os.getenv("AUDIT_API_KEY", ""),
         gemini_model=os.getenv("GEMINI_MODEL", "gemini-2.5-flash"),
         embedding_model=os.getenv(
             "EMBEDDING_MODEL", "sentence-transformers/all-MiniLM-L6-v2"
         ),
         data_dir=data_dir,
         max_upload_mb=_get_int("MAX_UPLOAD_MB", 20),
+        max_pdf_pages=_get_positive_int("MAX_PDF_PAGES", 500),
         chunk_size=_get_int("CHUNK_SIZE", 800),
         chunk_overlap=_get_int("CHUNK_OVERLAP", 150),
         top_k=_get_int("TOP_K", 5),
