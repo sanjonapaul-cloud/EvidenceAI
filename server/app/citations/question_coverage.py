@@ -3,12 +3,15 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 from typing import Optional
 
 from app.citations.evidence import Evidence
 from app.core.errors import LLMError
 from app.schemas import QuestionCoverageReport, QuestionGap
+
+logger = logging.getLogger(__name__)
 
 
 COVERAGE_SYSTEM_INSTRUCTION = """You are an evidence coverage analyzer for a document-grounded
@@ -178,6 +181,9 @@ def analyze_question_coverage(
         response = llm.generate(COVERAGE_SYSTEM_INSTRUCTION, prompt)
         valid_ids = {item.evidence_id for item in evidence}
         return parse_question_coverage_response(response, valid_ids)
-    except (LLMError, ValueError, TypeError, json.JSONDecodeError):
-        # Coverage analysis must never invalidate an otherwise verified answer.
+    except (LLMError, ValueError, TypeError, json.JSONDecodeError) as exc:
+        logger.warning(
+            "Question coverage analysis failed (%s).",
+            type(exc).__name__,
+        )
         return None
