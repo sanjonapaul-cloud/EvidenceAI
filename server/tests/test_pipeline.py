@@ -243,3 +243,84 @@ def test_pipeline_passes_only_claim_cited_evidence_to_verifier(monkeypatch):
 
     assert result.status == "answered"
     assert received_evidence == [["E1"], ["E2"]]
+
+def test_question_coverage_is_attached_to_answer(
+    loaded, registry, embedder, store, metrics, monkeypatch
+):
+    import app.rag.pipeline as pipeline
+    from app.schemas import QuestionCoverageReport, QuestionGap
+
+    expected_report = QuestionCoverageReport(
+        total_parts=2,
+        addressed_parts=1,
+        unanswered_parts=1,
+        gaps=[
+            QuestionGap(
+                requested_part="What were the limitations?",
+                status="missing_information",
+                explanation="The retrieved evidence does not fully address this part.",
+                evidence_ids=[],
+            )
+        ],
+    )
+
+    captured = {}
+
+    def fake_coverage(question, evidence, llm):
+        captured["question"] = question
+        captured["evidence"] = evidence
+        captured["llm"] = llm
+        return expected_report
+
+    monkeypatch.setattr(
+        pipeline,
+        "analyze_question_coverage",
+        fake_coverage,
+    )
+
+    llm = _verified_llm("The study covered one city [E1].")
+    result = _ask(
+        LIMITS_Q,
+        llm,
+        registry,
+        embedder,
+        store,
+        metrics,
+    )
+
+    assert result.status == "answered"
+    assert result.question_coverage == expected_report
+    assert captured["question"] == LIMITS_Q
+    assert captured["evidence"]
+    assert captured["llm"] is llm
+
+
+def test_question_coverage_failure_does_not_break_verified_answer(
+    loaded, registry, embedder, store, metrics, monkeypatch
+):
+    import app.rag.pipeline as pipeline
+
+    def failing_coverage(question, evidence, llm):
+        raise RuntimeError("Coverage analysis failed")
+
+    monkeypatch.setattr(
+        pipeline,
+        "analyze_question_coverage",
+        failing_coverage,
+    )
+
+    llm = _verified_llm("The study covered one city [E1].")
+    result = _ask(
+        LIMITS_Q,
+        llm,
+        registry,
+        embedder,
+        store,
+        metrics,
+    )
+
+    assert result.status == "answered"
+    assert "one city" in result.answer
+    assert result.citations
+    assert result.claims
+    assert result.question_coverage is None
