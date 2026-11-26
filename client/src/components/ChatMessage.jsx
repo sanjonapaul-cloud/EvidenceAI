@@ -1,10 +1,18 @@
+
 import CitationCard from "./CitationCard.jsx";
 import TrustReport from "./TrustReport.jsx";
+import QuestionCoverage from "./QuestionCoverage.jsx";
 
 const STATUS_LABEL = {
   answered: { text: "Answer based on your documents", cls: "badge-green" },
-  insufficient_evidence: { text: "Insufficient evidence", cls: "badge-amber" },
-  retrieval_only: { text: "Retrieval-only mode (no AI answer)", cls: "badge-blue" },
+  insufficient_evidence: {
+    text: "Insufficient evidence",
+    cls: "badge-amber",
+  },
+  retrieval_only: {
+    text: "Retrieval-only mode (no AI answer)",
+    cls: "badge-blue",
+  },
   llm_error: { text: "AI service unavailable", cls: "badge-red" },
 };
 
@@ -27,7 +35,9 @@ export default function ChatMessage({ message }) {
   if (message.role === "error") {
     return (
       <div className="msg">
-        <div className="bubble bubble-error" role="alert">{message.text}</div>
+        <div className="bubble bubble-error" role="alert">
+          {message.text}
+        </div>
       </div>
     );
   }
@@ -39,12 +49,22 @@ export default function ChatMessage({ message }) {
 
   return (
     <div className="msg">
-      <div className={`bubble ${insufficient ? "bubble-insufficient" : "bubble-assistant"}`}>
+      <div
+        className={`bubble ${
+          insufficient ? "bubble-insufficient" : "bubble-assistant"
+        }`}
+      >
         {label && <span className={`badge ${label.cls}`}>{label.text}</span>}
+
         <p className="answer-text">{message.text}</p>
+
         {message.note && <p className="muted small">{message.note}</p>}
 
+        {/* Claim-level Trust Report */}
         <TrustReport report={message.trustReport} />
+
+        {/* Original question coverage analysis */}
+        <QuestionCoverage report={message.questionCoverage} />
 
         {claims.length > 0 && (
           <div className="citations">
@@ -59,6 +79,7 @@ export default function ChatMessage({ message }) {
                 <div className="citation" key={`${index}-${claim.claim}`}>
                   <div className="citation-head">
                     <strong>Claim {index + 1}</strong>
+
                     {claimStatus && (
                       <span className={`badge ${claimStatus.cls}`}>
                         {claimStatus.text}
@@ -77,6 +98,7 @@ export default function ChatMessage({ message }) {
                       <div className="citations-title">
                         Sources for this claim ({claim.sources.length})
                       </div>
+
                       {claim.sources.map((source) => (
                         <CitationCard
                           key={`${source.evidence_id}-${source.document_id}`}
@@ -94,10 +116,17 @@ export default function ChatMessage({ message }) {
         {citations.length > 0 && (
           <div className="citations">
             <div className="citations-title">
-              {message.status === "answered" ? "Supporting evidence" : "Retrieved evidence"} ({citations.length})
+              {message.status === "answered"
+                ? "Supporting evidence"
+                : "Retrieved evidence"}{" "}
+              ({citations.length})
             </div>
+
             {citations.map((c) => (
-              <CitationCard key={`${c.evidence_id}-${c.document_id}-${c.page}`} citation={c} />
+              <CitationCard
+                key={`${c.evidence_id}-${c.document_id}-${c.page}`}
+                citation={c}
+              />
             ))}
           </div>
         )}

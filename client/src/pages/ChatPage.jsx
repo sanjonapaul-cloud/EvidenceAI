@@ -1,3 +1,4 @@
+
 import { useEffect, useRef, useState } from "react";
 import { askQuestion } from "../services/api.js";
 import ChatMessage from "../components/ChatMessage.jsx";
@@ -28,21 +29,31 @@ export default function ChatPage({
   }, [messages, busy]);
 
   function toggle(id) {
-    setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    setSelectedIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]
+    );
   }
 
   async function send(text) {
     const trimmed = text.trim();
     if (trimmed.length < 3 || busy) return;
+
     setQuestion("");
-    setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "user", text: trimmed }]);
+    setMessages((prev) => [
+      ...prev,
+      { id: crypto.randomUUID(), role: "user", text: trimmed },
+    ]);
     setBusy(true);
+
     try {
       const data = await askQuestion({
         question: trimmed,
-        documentIds: selectedIds.filter((id) => searchable.some((d) => d.document_id === id)),
+        documentIds: selectedIds.filter((id) =>
+          searchable.some((d) => d.document_id === id)
+        ),
         sessionId,
       });
+
       setMessages((prev) => [
         ...prev,
         {
@@ -54,10 +65,14 @@ export default function ChatPage({
           note: data.note,
           claims: data.claims ?? [],
           trustReport: data.trust_report ?? null,
+          questionCoverage: data.question_coverage ?? null,
         },
       ]);
     } catch (err) {
-      setMessages((prev) => [...prev, { id: crypto.randomUUID(), role: "error", text: err.message }]);
+      setMessages((prev) => [
+        ...prev,
+        { id: crypto.randomUUID(), role: "error", text: err.message },
+      ]);
     } finally {
       setBusy(false);
     }
@@ -66,12 +81,26 @@ export default function ChatPage({
   if (searchable.length === 0) {
     return (
       <div className="page">
-        <header className="page-header"><h1>Ask Questions</h1></header>
+        <header className="page-header">
+          <h1>Ask Questions</h1>
+        </header>
+
         <section className="card empty">
-          <div className="empty-icon" aria-hidden="true">💬</div>
-          <p><strong>No searchable documents yet.</strong></p>
-          <p className="muted">Upload a text-based PDF on the dashboard first.</p>
-          <button className="btn btn-primary" onClick={() => onNavigate("dashboard")}>Go to dashboard</button>
+          <div className="empty-icon" aria-hidden="true">
+            💬
+          </div>
+          <p>
+            <strong>No searchable documents yet.</strong>
+          </p>
+          <p className="muted">
+            Upload a text-based PDF on the dashboard first.
+          </p>
+          <button
+            className="btn btn-primary"
+            onClick={() => onNavigate("dashboard")}
+          >
+            Go to dashboard
+          </button>
         </section>
       </div>
     );
@@ -90,7 +119,12 @@ export default function ChatPage({
 
       <section className="card doc-picker" aria-label="Choose documents">
         {searchable.map((d) => (
-          <label key={d.document_id} className={`chip ${selectedIds.includes(d.document_id) ? "chip-on" : ""}`}>
+          <label
+            key={d.document_id}
+            className={`chip ${
+              selectedIds.includes(d.document_id) ? "chip-on" : ""
+            }`}
+          >
             <input
               type="checkbox"
               checked={selectedIds.includes(d.document_id)}
@@ -104,26 +138,51 @@ export default function ChatPage({
       <section className="chat-window card" aria-live="polite">
         {messages.length === 0 && (
           <div className="empty">
-            <div className="empty-icon" aria-hidden="true">🔎</div>
-            <p><strong>Ask a question about your documents.</strong></p>
-            <p className="muted">Answers always come with the page and passage that support them.</p>
+            <div className="empty-icon" aria-hidden="true">
+              🔎
+            </div>
+            <p>
+              <strong>Ask a question about your documents.</strong>
+            </p>
+            <p className="muted">
+              Answers always come with the page and passage that support them.
+            </p>
             <div className="examples">
               {EXAMPLE_QUESTIONS.map((q) => (
-                <button key={q} className="btn btn-ghost" onClick={() => setQuestion(q)}>{q}</button>
+                <button
+                  key={q}
+                  className="btn btn-ghost"
+                  onClick={() => setQuestion(q)}
+                >
+                  {q}
+                </button>
               ))}
             </div>
           </div>
         )}
-        {messages.map((m) => <ChatMessage key={m.id} message={m} />)}
+
+        {messages.map((m) => (
+          <ChatMessage key={m.id} message={m} />
+        ))}
+
         {busy && (
           <div className="msg">
-            <div className="bubble bubble-assistant"><Spinner label="Searching your documents…" /></div>
+            <div className="bubble bubble-assistant">
+              <Spinner label="Searching your documents…" />
+            </div>
           </div>
         )}
+
         <div ref={bottomRef} />
       </section>
 
-      <form className="composer" onSubmit={(e) => { e.preventDefault(); send(question); }}>
+      <form
+        className="composer"
+        onSubmit={(e) => {
+          e.preventDefault();
+          send(question);
+        }}
+      >
         <input
           className="input"
           value={question}
@@ -132,7 +191,12 @@ export default function ChatPage({
           maxLength={2000}
           aria-label="Your question"
         />
-        <button className="btn btn-primary" type="submit" disabled={busy || question.trim().length < 3}>
+
+        <button
+          className="btn btn-primary"
+          type="submit"
+          disabled={busy || question.trim().length < 3}
+        >
           Ask
         </button>
       </form>

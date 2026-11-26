@@ -17,12 +17,14 @@ from app.citations.insufficient import (
     NOTE_UNVERIFIABLE,
     model_declined,
 )
+from app.citations.question_coverage import analyze_question_coverage
 from app.citations.verification import (
     ClaimVerification,
     build_verification_prompt,
     extract_claims,
     parse_verification_response,
 )
+from app.schemas import QuestionCoverageReport
 from app.core.errors import LLMError
 from app.rag.prompt import SYSTEM_INSTRUCTION, build_user_prompt
 
@@ -52,6 +54,7 @@ class AnswerResult:
     citations: list[dict] = field(default_factory=list)
     note: str | None = None
     claims: list[dict] = field(default_factory=list)
+    question_coverage: QuestionCoverageReport | None = None
 
 
 def _insufficient(
@@ -65,6 +68,18 @@ def _insufficient(
         note=note,
         claims=claims or [],
     )
+
+
+def _analyze_coverage_safely(question, evidence, llm):
+    """Run question coverage without allowing it to break the main answer."""
+    if not evidence or not llm.is_configured:
+        return None
+
+    try:
+        return analyze_question_coverage(question, evidence, llm)
+    except Exception:
+        # Question coverage is supplemental; never break the main answer.
+        return None
 
 
 def _claim_to_dict(
@@ -241,10 +256,17 @@ def answer_question(
         if eid in evidence_by_id
     ]
 
+    question_coverage = _analyze_coverage_safely(
+       question,
+       evidence,
+       llm,
+    )
+
     return AnswerResult(
         answer=" ".join(accepted_claims),
         status="answered",
         citations=accepted_citations,
         note=None,
         claims=assessments,
+        question_coverage=question_coverage,
     )

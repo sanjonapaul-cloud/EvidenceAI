@@ -69,4 +69,5 @@ def ask(
         note=result.note,
         claims=result.claims,
         trust_report=trust_report,
+        question_coverage=result.question_coverage,
     )

@@ -108,6 +108,25 @@ class TrustReport(BaseModel):
     warnings: List[str] = Field(default_factory=list)
 
 
+class QuestionGap(BaseModel):
+    requested_part: str
+    status: Literal[
+        "missing_information",
+        "incomplete_evidence",
+        "conflicting_evidence",
+    ]
+    explanation: str
+    evidence_ids: List[str] = Field(default_factory=list)
+
+
+class QuestionCoverageReport(BaseModel):
+    total_parts: int
+    addressed_parts: int
+    unanswered_parts: int
+    gaps: List[QuestionGap] = Field(default_factory=list)
+    warnings: List[str] = Field(default_factory=list)
+
+
 class ChatResponse(BaseModel):
     answer: str
     status: Literal["answered", "insufficient_evidence", "retrieval_only", "llm_error"]
@@ -115,6 +134,7 @@ class ChatResponse(BaseModel):
     note: Optional[str] = None
     claims: List[ClaimAssessment] = Field(default_factory=list)
     trust_report: Optional[TrustReport] = None
+    question_coverage: Optional[QuestionCoverageReport] = None
 
 
 class EvaluationSummary(BaseModel):
